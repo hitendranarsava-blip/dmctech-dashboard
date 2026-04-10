@@ -1,32 +1,103 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <title>DMCTECH Dashboard</title>
     <style>
-        body { background-color: #000; color: #0f0; font-family: 'Segoe UI', sans-serif; }
+        body { 
+            background-color: #000; 
+            color: #0f0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        h2 { border-bottom: 2px solid #0f0; padding-bottom: 10px; text-shadow: 0 0 10px #0f0; }
+        
+        #folder-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 30px;
+        }
+
         .card { 
             border: 1px solid #0f0; 
             padding: 20px; 
-            margin: 10px; 
-            display: inline-block; 
+            width: 180px;
+            text-align: center;
             cursor: pointer;
-            transition: 0.3s;
+            transition: all 0.3s ease;
+            background: rgba(0, 255, 0, 0.05);
+            border-radius: 8px;
         }
-        .card:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
+        
+        .card:hover { 
+            background: #0f0; 
+            color: #000; 
+            box-shadow: 0 0 20px #0f0; 
+            transform: translateY(-5px);
+        }
+
+        .card h3 { margin: 0; font-size: 1.1rem; }
+        .loading { font-style: italic; color: #888; }
     </style>
 </head>
 <body>
     <h2>DMCTECH SECURE DRIVE</h2>
     
-    <div class="card" onclick="openFile('folder_basic_001')">
-        <h3>📁 BASIC ELECTRICAL</h3>
-        <p>Click to View Slides</p>
+    <div id="folder-container">
+        <p class="loading">Fetching secure folders...</p>
     </div>
 
     <script>
-        function openFile(fileId) {
-            // Yeh line C# ke 'WebView_WebMessageReceived' function ko signal bhejti hai
-            window.chrome.webview.postMessage(fileId);
+        // 1. Firebase se data fetch karna
+        async function loadFolders() {
+            try {
+                // Aapka Firebase URL (Isme .json lagana zaroori hai)
+                const firebaseUrl = "https://dmc-mobile-repair-default-rtdb.firebaseio.com/Folders.json";
+                
+                const response = await fetch(firebaseUrl);
+                const data = await response.json();
+                
+                const container = document.getElementById('folder-container');
+                container.innerHTML = ''; // Loading text hatane ke liye
+
+                if (data) {
+                    // Har folder ke liye ek card banana
+                    Object.keys(data).forEach(key => {
+                        const folder = data[key];
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        // Hum key (ID) bhej rahe hain C# ko taaki wo sahi file download kare
+                        card.onclick = () => openFile(key); 
+                        
+                        card.innerHTML = `
+                            <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
+                            <h3>${folder.FolderName || 'Untitled Folder'}</h3>
+                            <p style="font-size: 0.8rem;">Secure Content</p>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = "<p>No folders found in Cloud.</p>";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('folder-container').innerHTML = "<p>Connection Error!</p>";
+            }
         }
+
+        function openFile(fileId) {
+            // C# (WebView2) ko signal bhejna
+            if (window.chrome && window.chrome.webview) {
+                window.chrome.webview.postMessage(fileId);
+            } else {
+                alert("Only works inside DMCTECH App. ID: " + fileId);
+            }
+        }
+
+        // Page load hote hi folders load karein
+        window.onload = loadFolders;
     </script>
 </body>
 </html>
